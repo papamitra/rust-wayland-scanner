@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+
+import sys
+import xml.etree.ElementTree as etree
+
+conv_type = {
+    'int': 'i32',
+    'uint': 'u32',
+    'fixed': 'wl_fixed_t',
+    'fd': 'i32',
+    'string': '&str'
+}
+
+def create_param(arg):
+    n = arg.attrib['name']
+    t = arg.attrib['type']
+    if t == 'object':
+        t = '*const ' + 'Struct_' + arg.attrib['interface']
+    elif conv_type.get(t) is not None:
+        t = conv_type[t]
+
+    return n + ': ' + t
+
+def request_dtor(elem, ifname):
+    fn_name = ifname + '_' + elem.attrib['name']
+    st_name = 'Struct_' + ifname
+    arg = ifname + ': *mut ' + st_name
+    fn = 'pub fn {0}({1}) -> ()'.format(fn_name, arg)
+
+    fn_def = """{{
+    unsafe {{
+        wl_proxy_destroy({0} as *mut Struct_wl_proxy);
+    }}
+}}""".format(ifname)
+
+    print(fn,)
+    print(fn_def)
+    print()
+
+def request(elem, ifname):
+    if elem.attrib.get('type') == 'destructor':
+        request_dtor(elem, ifname)
+        return
+    name = elem.attrib['name']
+    st_name = 'Struct_' + ifname
+    params = [ifname + ': *mut ' + st_name]
+    args = []
+    ret_type = '*mut ::libc::c_void'
+    is_return = False
+    ret_name = 'id'
+    ex_lines = []
+    for arg in elem.findall('arg'):
+        t = arg.attrib['type']
+        if t == 'new_id':
+            is_return = True
+            if arg.attrib.get('interface') is None:
+                params.append('interface: *const Struct_wl_interface')
+                params.append('version: u32')
+                args.append('(*interface).name')
+                args.append('version')
+                args.insert(0, 'interface')
+            else:
+                ret_type = '*mut ' + 'Struct_' + arg.attrib['interface']
+                args.insert(0, '&{0}_interface'.format(ifname))
+            args.append('::std::ptr::null::<::libc::c_void>()')
+            ret_name = arg.attrib['name']
+
+            continue
+        elif t == 'string':
+            ex_lines.append('let {0}_c_string = std::ffi::CString::new({0}).unwrap();'.format(arg.attrib['name']))
+            args.append(arg.attrib['name'] + '_c_string.as_ptr()')
+        else:
+            args.append(arg.attrib['name'])
+        params.append(create_param(arg))
+
+    fn_name = ifname + '_' + name
+    if is_return:
+        fn = 'pub fn {0}({1}) -> {2}'.format(fn_name,
+                                             ', '.join(params),
+                                             ret_type)
+
+        fn_def = """{{
+    let {0}: *mut Struct_wl_proxy;
+    {5}
+    unsafe {{
+        {0} = wl_proxy_marshal_constructor({1} as *mut Struct_wl_proxy, {2}, {3});
+    }}
+    {0} as {4}
+}}""".format(ret_name, ifname, fn_name.upper(), ', '.join(args), ret_type, '\n'.join(ex_lines))
+    else:
+        fn = 'pub fn {0}({1}) -> ()'.format(fn_name,
+                                             ', '.join(params))
+
+        fn_def = """{{
+    {3}
+    unsafe {{
+        wl_proxy_marshal({0} as *mut Struct_wl_proxy, {1}, {2});
+    }}
+}}""".format(ifname, fn_name.upper(), ', '.join(args), '\n'.join(ex_lines))
+
+    print(fn,)
+    print(fn_def)
+    print()
+
+def iface_header(tree):
+    name = tree.attrib['name']
+    for i,req in enumerate(tree.findall('request')):
+        enum_name = (name + '_' + req.attrib['name']).upper()
+        print("const {0}: ::libc::c_uint = {1};".format(enum_name, i))
+    #print("extern {{ static {0}_interface: Struct_wl_interface;}}".format(name))
+    print()
+
+def interface(tree):
+    iface_header(tree)
+
+    name = tree.attrib['name']
+    for e in tree:
+        if e.tag == 'request':
+            request(e, name)
+
+def protocol(tree):
+    for i in tree.findall('interface'):
+        interface(i)
+
+def header():
+    print("""
+#[path="wayland_client.rs"]
+mod wayland_client;
+use wayland_client::*;
+//include!("./wayland_client.rs");
+
+use std;
+use libc;
+
+""")
+
+def main():
+    header()
+    xmlstr = sys.stdin.read()
+    root = etree.fromstring(xmlstr)
+    protocol(root)
+
+if __name__ == '__main__':
+    main()
