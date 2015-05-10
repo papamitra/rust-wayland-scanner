@@ -2,6 +2,7 @@
 
 import sys
 import xml.etree.ElementTree as etree
+import argparse
 
 conv_type = {
     'int': 'i32',
@@ -134,11 +135,32 @@ use libc;
 
 """)
 
+def usage():
+    print("""usage:
+scanner.py /path/to/wayland.xml
+""")
+
 def main():
-    header()
-    xmlstr = sys.stdin.read()
-    root = etree.fromstring(xmlstr)
-    protocol(root)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', help='path to protocol.xml')
+    parser.add_argument('-o', '--output', help='path to output rust file')
+    args = parser.parse_args()
+
+    stdout = sys.stdout
+    try:
+        if args.output:
+            sys.stdout = open(args.output,'w')
+
+        header()
+
+        with open(args.input) as f:
+            xmlstr = f.read()
+            root = etree.fromstring(xmlstr)
+            protocol(root)
+    finally:
+        if sys.stdout != stdout:
+            close(sys.stdout)
+            sys.stdout = stdout
 
 if __name__ == '__main__':
     main()

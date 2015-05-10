@@ -2,3 +2,4 @@
 name = "example"
 version = "0.1.0"
 authors = ["papamitra <papamitra@gmail.com>"]
+build = "build.rs"
