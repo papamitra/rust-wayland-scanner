@@ -111,6 +111,18 @@ def iface_header(tree):
     #print("extern {{ static {0}_interface: Struct_wl_interface;}}".format(name))
     print()
 
+def add_listener(ifname):
+    print("""
+pub fn {0}_add_listener({0}: *mut Struct_{0},
+                        listener: *const Struct_{0}_listener,
+                        data: *mut ::libc::c_void) -> ::libc::c_int {{
+    unsafe {{
+        return wl_proxy_add_listener({0} as *mut Struct_wl_proxy,
+                                     listener as *mut std::option::Option<extern "C" fn()->()>, data);
+    }}
+}}
+""".format(ifname))
+
 def interface(tree):
     iface_header(tree)
 
@@ -118,6 +130,9 @@ def interface(tree):
     for e in tree:
         if e.tag == 'request':
             request(e, name)
+
+    if tree.findall('event'):
+        add_listener(name)
 
 def protocol(tree):
     for i in tree.findall('interface'):
