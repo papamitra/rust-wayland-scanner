@@ -18,7 +18,7 @@ fn main() {
         .arg(&format!("{}/share/wayland/wayland.xml", wl_prefix))
         .status().unwrap();
 
-    Command::new("bindgen").args(&["-builtins", "-o"])
+    Command::new("bindgen").args(&["-l", "wayland-client", "-builtins", "-o"])
         .arg(&format!("{}/src/wayland_client.rs", top_dir))
         .arg(&format!("{}/include/wayland-client.h", wl_prefix))
         .status().unwrap();
