@@ -62,7 +62,7 @@ def request(elem, ifname):
                 args.insert(0, 'interface')
             else:
                 ret_type = '*mut ' + 'Struct_' + arg.attrib['interface']
-                args.insert(0, '&{0}_interface'.format(ifname))
+                args.insert(0, '&{0}_interface'.format(arg.attrib['interface']))
             args.append('::std::ptr::null::<::libc::c_void>()')
             ret_name = arg.attrib['name']
 
