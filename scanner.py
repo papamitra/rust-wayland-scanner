@@ -140,14 +140,9 @@ def protocol(tree):
 
 def header():
     print("""
-#[path="wayland_client.rs"]
-mod wayland_client;
-use wayland_client::*;
+use client::wayland_client::*;
 //include!("./wayland_client.rs");
-
 use std;
-use libc;
-
 """)
 
 def usage():

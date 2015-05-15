@@ -14,12 +14,12 @@ fn main() {
 
     Command::new("python3").arg(&format!("{}/../scanner.py", top_dir))
         .arg(&"-o")
-        .arg(&format!("{}/src/wayland_client_protocol.rs", top_dir))
+        .arg(&format!("{}/src/client/wayland_client_protocol.rs", top_dir))
         .arg(&format!("{}/share/wayland/wayland.xml", wl_prefix))
         .status().unwrap();
 
     Command::new("bindgen").args(&["-l", "wayland-client", "-builtins", "-o"])
-        .arg(&format!("{}/src/wayland_client.rs", top_dir))
+        .arg(&format!("{}/src/client/wayland_client.rs", top_dir))
         .arg(&format!("{}/include/wayland-client.h", wl_prefix))
         .status().unwrap();
 }
